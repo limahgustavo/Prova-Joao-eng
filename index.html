@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapeando Pontos em Manaus</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <style>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mapeando Pontos em Manaus</title>
+        <link rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+        <style>
         body {
             display: flex;
             margin: 0;
@@ -81,24 +82,28 @@
             margin-right: 5px;
         }
     </style>
-</head>
-<body>
-    <div id="map-container">
-        <div id="form-container">
-            <input type="text" id="addressInput" placeholder="Digite o endereço">
-            <button onclick="addAddress()">Adicionar Ponto</button>
-            <button class="clear" onclick="clearMap()">Limpar Todos os Dados</button>
+    </head>
+    <body>
+        <div id="map-container">
+            <div id="form-container">
+                <input type="text" id="addressInput"
+                    placeholder="Digite o endereço">
+                <button onclick="addAddress()">Adicionar Ponto</button>
+                <button class="clear" onclick="clearMap()">Limpar Todos os
+                    Dados</button>
+            </div>
+            <div id="map"></div>
         </div>
-        <div id="map"></div>
-    </div>
 
-    <div id="sidebar">
-        <h3>Endereços Salvos</h3>
-        <button onclick="exportLocations()" style="margin-bottom: 20px;">Exportar Endereços</button>
-        <div id="savedLocationsList"></div>
-    </div>
+        <div id="sidebar">
+            <h3>Endereços Salvos</h3>
+            <button onclick="exportLocations()"
+                style="margin-bottom: 20px;">Exportar Endereços</button>
+            <div id="savedLocationsList"></div>
+        </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcWBE2T3DAuHvxAgShwRpjp-XkU-6iFmU&libraries=places"></script>
-    <script src="script.js"></script>
-</body>
+        <script
+            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAcWBE2T3DAuHvxAgShwRpjp-XkU-6iFmU&libraries=places"></script>
+        <script src="script.js"></script>
+    </body>
 </html>
