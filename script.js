@@ -1,147 +1,85 @@
-let map;
-let autocomplete;
+let map, autocomplete;
 let savedLocations = JSON.parse(localStorage.getItem("savedLocations")) || [];
 let markers = [];
 
 /**
- * Inicializa o mapa, configura o autocomplete para o campo de endereço,
- * e exibe os marcadores previamente salvos no localStorage.
- * 
- * Exemplo:
- * - Carrega um mapa centralizado em Manaus.
- * - Preenche o mapa com marcadores salvos e permite adicionar novos endereços.
+ * Inicializa o mapa e configurações iniciais.
  */
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center: { lat: -3.1, lng: -60.02 }, // Manaus
-    zoom: 13,
+    zoom: 12,
   });
 
-  savedLocations.forEach((location) => {
-    addMarker(location.lat, location.lng, location.description, false);
-  });
+  savedLocations.forEach(({ lat, lng, description }) => addMarker(lat, lng, description, false));
 
   const addressInput = document.getElementById("addressInput");
-  autocomplete = new google.maps.places.Autocomplete(addressInput);
-
-  autocomplete.setOptions({
+  autocomplete = new google.maps.places.Autocomplete(addressInput, {
     types: ["geocode"],
     componentRestrictions: { country: "BR" },
   });
 
-  autocomplete.addListener("place_changed", () => {
-    const place = autocomplete.getPlace();
-    if (place.geometry && place.geometry.location) {
-      const lat = place.geometry.location.lat();
-      const lng = place.geometry.location.lng();
-      const description = place.formatted_address || "Local selecionado";
-
-      if (confirm("Deseja adicionar este endereço?")) {
-        addMarker(lat, lng, description);
-        saveLocation(lat, lng, description);
-        addressInput.value = "";
-      }
-    }
-  });
+  autocomplete.addListener("place_changed", handlePlaceSelection);
   updateSidebar();
 }
 
 /**
- * Atualiza a lista de endereços salvos exibida na barra lateral.
- * 
- * Exemplo:
- * - Exibe uma lista de endereços com opções de centralizar o mapa ou remover o endereço.
+ * Lida com a seleção de um local no autocomplete.
  */
-function updateSidebar() {
-  const sidebar = document.getElementById("savedLocationsList");
-  sidebar.innerHTML = "";
+function handlePlaceSelection() {
+  const place = autocomplete.getPlace();
+  if (place.geometry) {
+    const { lat, lng } = place.geometry.location.toJSON();
+    const description = place.formatted_address || "Local selecionado";
 
-  savedLocations.forEach((location, index) => {
-    const addressDiv = document.createElement("div");
-    addressDiv.classList.add("address-item");
-
-    const addressTitle = document.createElement("h4");
-    addressTitle.textContent = location.description || "Sem título";
-    addressDiv.appendChild(addressTitle);
-
-    const centerButton = document.createElement("button");
-    centerButton.textContent = "Centralizar";
-    centerButton.onclick = () => {
-      map.setCenter({ lat: location.lat, lng: location.lng });
-      map.setZoom(15);
-    };
-    addressDiv.appendChild(centerButton);
-
-    const removeButton = document.createElement("button");
-    removeButton.textContent = "Remover";
-    removeButton.onclick = () => {
-      removeMarker(location.lat, location.lng);
-    };
-    addressDiv.appendChild(removeButton);
-
-    sidebar.appendChild(addressDiv);
-  });
+    if (confirm("Deseja adicionar este endereço?")) {
+      addMarker(lat, lng, description);
+      saveLocation(lat, lng, description);
+      document.getElementById("addressInput").value = "";
+    }
+  }
 }
 
 /**
- * Adiciona um marcador no mapa na localização especificada.
- * 
- * @param {number} lat - Latitude do local.
- * @param {number} lng - Longitude do local.
- * @param {string} description - Descrição do marcador.
- * 
- * Exemplo:
- * - Adiciona um marcador com descrição "Escritório" em (-3.1, -60.02).
+ * Atualiza a barra lateral com os endereços salvos.
+ */
+function updateSidebar() {
+  const sidebar = document.getElementById("savedLocationsList");
+  sidebar.innerHTML = savedLocations
+    .map(
+      ({ lat, lng, description }, index) => `
+      <div class="address-item">
+        <h4>${description || "Sem título"}</h4>
+        <button onclick="focusLocation(${lat}, ${lng})">Centralizar</button>
+        <button onclick="removeLocation(${lat}, ${lng})">Remover</button>
+      </div>`
+    )
+    .join("");
+}
+
+/**
+ * Adiciona um marcador no mapa e configura sua janela de informações.
  */
 function addMarker(lat, lng, description) {
   const marker = new google.maps.Marker({
     position: { lat, lng },
-    map: map,
+    map,
     title: description,
   });
 
   markers.push(marker);
-
-  const infoWindow = new google.maps.InfoWindow({
-    content: generateInfoContent(lat, lng, description),
-  });
-
-  marker.addListener("click", () => {
-    infoWindow.open(map, marker);
-  });
+  marker.addListener("click", () =>
+    new google.maps.InfoWindow({
+      content: `<h3>${description}</h3><p>Latitude: ${lat}</p><p>Longitude: ${lng}</p>`,
+    }).open(map, marker)
+  );
 
   map.setCenter({ lat, lng });
   map.setZoom(15);
-  updateSidebar();
 }
 
 /**
- * Gera o conteúdo para a janela de informações de um marcador.
- * 
- * @param {number} lat - Latitude do marcador.
- * @param {number} lng - Longitude do marcador.
- * @param {string} description - Descrição do marcador.
- * 
- * Exemplo:
- * - Exibe informações detalhadas como latitude, longitude e descrição.
- */
-function generateInfoContent(lat, lng, description) {
-  return `
-        <div>
-            <h3>Informações sobre localização</h3>
-            <h3 id="title-${lat}-${lng}">${description}</h3>
-            <p>Latitude: ${lat}</p>
-            <p>Longitude: ${lng}</p>
-        </div>
-    `;
-}
-
-/**
- * Salva a localização no localStorage e atualiza a barra lateral.
- * 
- * @param {number} lat - Latitude do local.
- * @param {number} lng - Longitude do local.
- * @param {string} description - Descrição do local.
+ * Salva uma localização no localStorage.
  */
 function saveLocation(lat, lng, description) {
   savedLocations.push({ lat, lng, description });
@@ -150,33 +88,28 @@ function saveLocation(lat, lng, description) {
 }
 
 /**
- * Remove um marcador do mapa e do localStorage.
- * 
- * @param {number} lat - Latitude do marcador a ser removido.
- * @param {number} lng - Longitude do marcador a ser removido.
+ * Remove uma localização do mapa e localStorage.
  */
-function removeMarker(lat, lng) {
-  const markerIndex = markers.findIndex(
-    (marker) =>
-      marker.position.lat() === parseFloat(lat) &&
-      marker.position.lng() === parseFloat(lng)
-  );
+function removeLocation(lat, lng) {
+  markers = markers.filter((marker) => {
+    if (marker.getPosition().equals(new google.maps.LatLng(lat, lng))) {
+      marker.setMap(null);
+      return false;
+    }
+    return true;
+  });
 
-  if (markerIndex !== -1) {
-    markers[markerIndex].setMap(null);
-    markers.splice(markerIndex, 1);
-  }
-
-  const locationIndex = savedLocations.findIndex(
-    (loc) => loc.lat == lat && loc.lng == lng
-  );
-
-  if (locationIndex !== -1) {
-    savedLocations.splice(locationIndex, 1);
-    localStorage.setItem("savedLocations", JSON.stringify(savedLocations));
-  }
-
+  savedLocations = savedLocations.filter((loc) => loc.lat !== lat || loc.lng !== lng);
+  localStorage.setItem("savedLocations", JSON.stringify(savedLocations));
   updateSidebar();
+}
+
+/**
+ * Centraliza o mapa na localização especificada.
+ */
+function focusLocation(lat, lng) {
+  map.setCenter({ lat, lng });
+  map.setZoom(15);
 }
 
 /**
@@ -192,35 +125,20 @@ function clearMap() {
   }
 }
 
-
 /**
- * Exporta as localizações salvas como um arquivo JSON.
+ * Exporta as localizações salvas como JSON.
  */
 function exportLocations() {
-  if (savedLocations == "") {
-    window.alert("Não exite endereços cadastrados");
-  } else {
-    const dataStr = JSON.stringify(savedLocations, null, 2);
-
-    // Cria um blob a partir da string JSON
-    const blob = new Blob([dataStr], { type: "application/json" });
-
-    // Cria uma URL para o blob
-    const url = URL.createObjectURL(blob);
-
-    // Cria um elemento de link para download
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "saved_locations.json";
-
-    // Simula o clique para iniciar o download
-    document.body.appendChild(a);
-    a.click();
-
-    // Remove o link do DOM após o clique
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  if (!savedLocations.length) {
+    return alert("Não há endereços cadastrados.");
   }
+  const blob = new Blob([JSON.stringify(savedLocations, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "saved_locations.json";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-window.onload = initMap;
+window.onload = initMap();
